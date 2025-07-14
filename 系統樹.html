@@ -1,0 +1,475 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>インタラクティブ系統樹作成ガイド</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Warm Neutrals (Stone, Amber, Emerald) -->
+    <!-- Application Structure Plan: The SPA transforms the linear guide into a task-oriented workflow. It starts with an introduction ('What is a Tree?'), moves to an interactive project section ('Start the Project' with theme selection, checklists, and a hands-on classification tool), then provides practical advice ('Documenting' and 'Tips'). This structure is more engaging for a student audience than a simple text document, encouraging active participation rather than passive reading. The interactive classification tool is the centerpiece, allowing users to apply the concepts directly within the guide. -->
+    <!-- Visualization & Content Choices:
+    - Report Info: Definition of a phylogenetic tree -> Goal: Inform -> Viz/Method: HTML/CSS diagram with `div`s and borders -> Interaction: Hover to highlight and show definitions -> Justification: A simple, interactive way to teach the core concept without complex libraries.
+    - Report Info: Step 1: Choose a theme -> Goal: Engage/Organize -> Viz/Method: HTML/CSS clickable cards -> Interaction: Click to reveal examples -> Justification: Makes the first step more interactive and provides immediate inspiration.
+    - Report Info: Step 2: Classify creatures -> Goal: Compare/Relationships -> Viz/Method: Custom HTML/CSS/JS interactive tool (click to categorize animals) -> Interaction: User clicks an animal and a category button to build a simple classification -> Justification: This is the core interactive element, a hands-on but simplified version of the task, making the concept of classification tangible.
+    - Report Info: Tips and Google Docs instructions -> Goal: Inform -> Viz/Method: Styled lists and text blocks with icons -> Interaction: Simple hover effects -> Justification: Presents static information in a clean, visually appealing, and easily digestible format.
+    - Library/Method: Vanilla JavaScript for all interactions. Tailwind CSS for styling.
+-->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+        }
+        .bg-pattern {
+            background-color: #fdfaf4;
+            background-image: radial-gradient(#d1ccc0 0.5px, transparent 0.5px);
+            background-size: 15px 15px;
+        }
+        .tab-button.active {
+            background-color: #10B981;
+            color: white;
+            border-color: #10B981;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .tree-node {
+            position: relative;
+            padding-left: 20px;
+        }
+        .tree-node::before, .tree-node::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            border-left: 1px solid #9CA3AF;
+        }
+        .tree-node::before {
+            top: 0;
+            height: 50%;
+            width: 20px;
+            border-bottom: 1px solid #9CA3AF;
+        }
+        .tree-node::after {
+            top: 50%;
+            height: 50%;
+        }
+        .tree-node:last-child::after {
+            display: none;
+        }
+        .card-selected {
+            box-shadow: 0 0 0 3px #10B981;
+            transform: scale(1.05);
+        }
+        .sample-tree-node {
+            position: relative;
+            padding-left: 20px;
+        }
+        .sample-tree-node::before, .sample-tree-node::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            border-left: 1px solid #6B7280; /* Darker line for clarity */
+        }
+        .sample-tree-node::before {
+            top: 0;
+            height: 50%;
+            width: 20px;
+            border-bottom: 1px solid #6B7280;
+        }
+        .sample-tree-node::after {
+            top: 50%;
+            height: 50%;
+        }
+        .sample-tree-node:last-child::after {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <div class="bg-pattern min-h-screen">
+        <header class="text-center py-8 md:py-12 bg-white/50 backdrop-blur-sm">
+            <h1 class="text-3xl md:text-5xl font-bold text-emerald-700">インタラクティブ系統樹作成ガイド</h1>
+            <p class="mt-4 text-stone-600 max-w-2xl mx-auto">夏休みの宿題を、もっと楽しく、もっと分かりやすく。</p>
+        </header>
+
+        <main class="max-w-5xl mx-auto px-4 py-8">
+            
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-12">
+                <h2 class="text-2xl font-bold text-emerald-600 mb-4">1. 系統樹ってなんだろう？</h2>
+                <p class="mb-6 text-stone-600">系統樹は、生物がどのように進化してきたかの「家系図」のようなものです。共通の祖先から、どのように枝分かれして今の多様な生き物になったのかをひと目で理解できます。下の図の各部分にマウスを乗せると、説明が表示されます。</p>
+                
+                <div class="flex justify-center items-start p-4 bg-stone-100 rounded-lg mb-8">
+                    <div class="w-1/3 text-right pr-4">
+                         <div id="tree-explanation" class="p-4 bg-emerald-50 rounded-md h-40 flex items-center justify-center text-emerald-800 transition-all duration-300">
+                            <p>各部分にマウスを乗せてみよう！</p>
+                        </div>
+                    </div>
+                    <div class="w-2/3">
+                        <div class="tree-root pt-10 pl-5">
+                            <div class="tree-node" data-text="【根元】すべての生物の共通の祖先を表します。ここから進化が始まります。">
+                                <span class="bg-white px-2 py-1 rounded shadow-sm">生物の共通祖先</span>
+                                <div class="pt-5 pl-5">
+                                    <div class="tree-node" data-text="【枝分かれ（分岐点）】ここで新しい特徴を持つグループが生まれました。この点自体が、枝分かれした生物たちの共通祖先になります。">
+                                        <span class="bg-white px-2 py-1 rounded shadow-sm">分岐点 A</span>
+                                        <div class="pt-5 pl-5">
+                                            <div class="tree-node" data-text="【先端】現在生きている生物（または絶滅した生物）を表します。">
+                                                <span class="bg-white px-2 py-1 rounded shadow-sm">生物 A</span>
+                                            </div>
+                                            <div class="tree-node" data-text="【先端】枝が近いほど、生物同士の関係が近い（近縁）ことを意味します。生物BとCは近い仲間です。">
+                                                <span class="bg-white px-2 py-1 rounded shadow-sm">生物 B</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="tree-node" data-text="【枝】進化の道のりを表しています。枝の長さが進化の時間を示すこともあります。">
+                                        <span class="bg-white px-2 py-1 rounded shadow-sm">生物 C</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-emerald-600 mb-4 pt-4 border-t border-stone-200">具体的な系統樹の見本</h3>
+                <p class="mb-6 text-stone-600">こちらは、いくつかの身近な動物を例にした系統樹です。共通の祖先からどのように枝分かれして、それぞれの動物が生まれたのかを見てみましょう。</p>
+                <div class="flex justify-center items-start p-4 bg-stone-100 rounded-lg">
+                    <div class="w-full">
+                        <div class="sample-tree-root pt-10 pl-5">
+                            <div class="sample-tree-node">
+                                <span class="bg-white px-2 py-1 rounded shadow-sm font-bold">すべての生物の共通祖先</span>
+                                <div class="pt-5 pl-5">
+                                    <div class="sample-tree-node">
+                                        <span class="bg-white px-2 py-1 rounded shadow-sm">無脊椎動物</span>
+                                        <div class="pt-5 pl-5">
+                                            <div class="sample-tree-node">
+                                                <span class="bg-white px-2 py-1 rounded shadow-sm">🦋 チョウ</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="sample-tree-node">
+                                        <span class="bg-white px-2 py-1 rounded shadow-sm">脊椎動物</span>
+                                        <div class="pt-5 pl-5">
+                                            <div class="sample-tree-node">
+                                                <span class="bg-white px-2 py-1 rounded shadow-sm">魚類</span>
+                                                <div class="pt-5 pl-5">
+                                                    <div class="sample-tree-node">
+                                                        <span class="bg-white px-2 py-1 rounded shadow-sm">🐟 マグロ</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="sample-tree-node">
+                                                <span class="bg-white px-2 py-1 rounded shadow-sm">鳥類</span>
+                                                <div class="pt-5 pl-5">
+                                                    <div class="sample-tree-node">
+                                                        <span class="bg-white px-2 py-1 rounded shadow-sm">🐦 スズメ</span>
+                                                    </div>
+                                                    <div class="sample-tree-node">
+                                                        <span class="bg-white px-2 py-1 rounded shadow-sm">� ペンギン</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="sample-tree-node">
+                                                <span class="bg-white px-2 py-1 rounded shadow-sm">哺乳類</span>
+                                                <div class="pt-5 pl-5">
+                                                    <div class="sample-tree-node">
+                                                        <span class="bg-white px-2 py-1 rounded shadow-sm">🦁 ライオン</span>
+                                                    </div>
+                                                    <div class="sample-tree-node">
+                                                        <span class="bg-white px-2 py-1 rounded shadow-sm">🦇 コウモリ</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-12">
+                <h2 class="text-2xl font-bold text-emerald-600 mb-2">2. プロジェクトをはじめよう！</h2>
+                <p class="mb-6 text-stone-600">さあ、実際に系統樹作成のステップを体験してみましょう。下のタブをクリックして、各ステップを進めてください。</p>
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                        <button class="tab-button active whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-all duration-300 rounded-t-lg" data-tab="step1">
+                            Step 1: テーマ決め
+                        </button>
+                        <button class="tab-button whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-all duration-300 rounded-t-lg text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="step2">
+                            Step 2: 分類チャレンジ
+                        </button>
+                        <button class="tab-button whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-all duration-300 rounded-t-lg text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="step3">
+                            Step 3: レポート作成
+                        </button>
+                    </nav>
+                </div>
+
+                <div id="step1" class="content-section active">
+                    <h3 class="text-xl font-semibold mb-3">テーマを選んでみよう</h3>
+                    <p class="mb-6 text-stone-600">どんな生物の系統樹を作りたいですか？下のカードをクリックして、インスピレーションを得ましょう！</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="theme-card cursor-pointer p-4 border rounded-lg text-center hover:shadow-md transition-shadow" data-theme="mammals">
+                            <span class="text-4xl">🐘</span>
+                            <p class="font-bold mt-2">哺乳類</p>
+                        </div>
+                        <div class="theme-card cursor-pointer p-4 border rounded-lg text-center hover:shadow-md transition-shadow" data-theme="birds">
+                             <span class="text-4xl">🐦</span>
+                            <p class="font-bold mt-2">鳥類</p>
+                        </div>
+                        <div class="theme-card cursor-pointer p-4 border rounded-lg text-center hover:shadow-md transition-shadow" data-theme="insects">
+                             <span class="text-4xl">🦋</span>
+                            <p class="font-bold mt-2">昆虫</p>
+                        </div>
+                         <div class="theme-card cursor-pointer p-4 border rounded-lg text-center hover:shadow-md transition-shadow" data-theme="plants">
+                             <span class="text-4xl">🌻</span>
+                            <p class="font-bold mt-2">植物</p>
+                        </div>
+                    </div>
+                    <div id="theme-details" class="mt-6 p-4 bg-stone-100 rounded-lg min-h-[100px] flex items-center justify-center">
+                        <p class="text-stone-500">カードを選ぶと、ここに例が表示されます。</p>
+                    </div>
+                </div>
+
+                <div id="step2" class="content-section">
+                     <h3 class="text-xl font-semibold mb-3">特徴で仲間分けしてみよう</h3>
+                    <p class="mb-4 text-stone-600">ここにいる動物たちを、特徴をヒントにグループ分けしてみましょう。まず下の動物を選んでから、どのグループに入るかボタンを押してください。</p>
+                    <div id="classification-workspace" class="lg:flex lg:space-x-6">
+                        <div class="lg:w-1/3 mb-6 lg:mb-0">
+                            <h4 class="font-bold mb-3 text-center">動物を選ぼう</h4>
+                            <div class="grid grid-cols-3 gap-2" id="animal-selector">
+                            </div>
+                            <div class="mt-4 p-3 bg-stone-100 rounded-lg text-center">
+                                <p class="text-sm">選択中の動物:</p>
+                                <p id="selected-animal-name" class="font-bold text-lg text-emerald-700">-</p>
+                            </div>
+                        </div>
+
+                        <div class="lg:w-2/3">
+                            <h4 class="font-bold mb-3 text-center">グループに分類しよう</h4>
+                            <div id="classification-groups" class="space-y-3">
+                            </div>
+                        </div>
+                    </div>
+                     <button id="reset-button" class="mt-6 bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-4 rounded transition-colors">リセット</button>
+                </div>
+
+                <div id="step3" class="content-section">
+                    <h3 class="text-xl font-semibold mb-3">Googleドキュメントで清書する</h3>
+                    <p class="mb-6 text-stone-600">調べた内容と作った系統樹を、Googleドキュメントにまとめましょう。見やすく、分かりやすいレポートを作るためのポイントです。</p>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="text-emerald-500 font-bold text-xl mr-4">①</span>
+                            <div>
+                                <h4 class="font-semibold">A4サイズに設定</h4>
+                                <p class="text-stone-600">「ファイル」メニュー → 「ページ設定」で用紙サイズを「A4」に。宿題の提出形式に合わせましょう。</p>
+                            </div>
+                        </li>
+                         <li class="flex items-start">
+                            <span class="text-emerald-500 font-bold text-xl mr-4">②</span>
+                            <div>
+                                <h4 class="font-semibold">「描画」機能で系統樹を作成</h4>
+                                <p class="text-stone-600">「挿入」メニュー → 「描画」→「新規」で、線や図形、テキストボックスを組み合わせて系統樹を描きます。自分で作った分類をきれいに表現できます。</p>
+                            </div>
+                        </li>
+                         <li class="flex items-start">
+                            <span class="text-emerald-500 font-bold text-xl mr-4">③</span>
+                            <div>
+                                <h4 class="font-semibold">写真と説明を追加</h4>
+                                <p class="text-stone-600">系統樹の横に、調べた生物の写真と説明、そして「なぜそう分類したか」の根拠を書きましょう。これが君だけのオリジナルな考察になります。</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                 <h2 class="text-2xl font-bold text-emerald-600 mb-4">3. もっと良くするためのヒント</h2>
+                 <p class="mb-6 text-stone-600">レポートのクオリティをさらに上げるためのコツを紹介します。</p>
+                 <div class="grid md:grid-cols-2 gap-6">
+                    <div class="p-4 bg-stone-50 rounded-lg flex items-center">
+                        <span class="text-3xl mr-4">🎨</span>
+                        <div>
+                            <h4 class="font-semibold">色を活用する</h4>
+                            <p class="text-sm text-stone-600">グループごとに色分けすると、パッと見て関係性が分かりやすくなります。</p>
+                        </div>
+                    </div>
+                     <div class="p-4 bg-stone-50 rounded-lg flex items-center">
+                        <span class="text-3xl mr-4">✍️</span>
+                        <div>
+                            <h4 class="font-semibold">下書きは大切</h4>
+                            <p class="text-sm text-stone-600">いきなりPCで描くのではなく、一度紙にラフスケッチすると考えがまとまります。</p>
+                        </div>
+                    </div>
+                     <div class="p-4 bg-stone-50 rounded-lg flex items-center">
+                        <span class="text-3xl mr-4">📚</span>
+                        <div>
+                            <h4 class="font-semibold">参考文献を記載する</h4>
+                            <p class="text-sm text-stone-600">参考にした本やウェブサイトを最後に書くと、レポートの信頼性がアップします。</p>
+                        </div>
+                    </div>
+                     <div class="p-4 bg-stone-50 rounded-lg flex items-center">
+                        <span class="text-3xl mr-4">💡</span>
+                        <div>
+                            <h4 class="font-semibold">自分の言葉で説明する</h4>
+                            <p class="text-sm text-stone-600">調べたことを丸写しせず、「なぜそう考えたか」を自分の言葉で書くことが最も重要です。</p>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+        </main>
+
+        <footer class="text-center py-6 mt-8">
+            <p class="text-sm text-stone-500">&copy; 2025 Interactive Study Guide. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Section 1: Tree Explanation ---
+        const treeNodes = document.querySelectorAll('.tree-node, .tree-node span');
+        const explanationBox = document.getElementById('tree-explanation');
+        const defaultText = explanationBox.innerHTML;
+
+        treeNodes.forEach(node => {
+            const parentNode = node.closest('.tree-node');
+            if(parentNode) {
+                 node.addEventListener('mouseover', () => {
+                    explanationBox.innerHTML = `<p>${parentNode.dataset.text}</p>`;
+                });
+                node.addEventListener('mouseout', () => {
+                    explanationBox.innerHTML = defaultText;
+                });
+            }
+        });
+
+        // --- Section 2: Tabs ---
+        const tabs = document.querySelectorAll('.tab-button');
+        const contentSections = document.querySelectorAll('.content-section');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                contentSections.forEach(section => {
+                    section.classList.remove('active');
+                });
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // --- Step 1: Theme Selection ---
+        const themeCards = document.querySelectorAll('.theme-card');
+        const themeDetails = document.getElementById('theme-details');
+        const themeData = {
+            mammals: '例: ライオン、ゾウ、イルカ、コウモリ。体毛があり、母乳で子を育てます。',
+            birds: '例: スズメ、ペンギン、ダチョウ、ワシ。羽毛があり、翼を持ち、卵を産みます。',
+            insects: '例: チョウ、カブトムシ、アリ、ハチ。体が頭・胸・腹に分かれ、脚が6本あります。',
+            plants: '例: ヒマワリ、サクラ、マツ、タンポポ。光合成をして自分で栄養を作ります。'
+        };
+
+        themeCards.forEach(card => {
+            card.addEventListener('click', () => {
+                themeDetails.innerHTML = `<p class="text-stone-700">${themeData[card.dataset.theme]}</p>`;
+                themeCards.forEach(c => c.classList.remove('ring-2', 'ring-emerald-500'));
+                card.classList.add('ring-2', 'ring-emerald-500');
+            });
+        });
+
+        // --- Step 2: Classification Challenge ---
+        const animalSelector = document.getElementById('animal-selector');
+        const classificationGroupsContainer = document.getElementById('classification-groups');
+        const selectedAnimalName = document.getElementById('selected-animal-name');
+        const resetButton = document.getElementById('reset-button');
+
+        let selectedAnimal = null;
+
+        const animals = [
+            { id: 'lion', name: 'ライオン', group: 'mammals', emoji: '🦁' },
+            { id: 'bat', name: 'コウモリ', group: 'mammals', emoji: '🦇' },
+            { id: 'penguin', name: 'ペンギン', group: 'birds', emoji: '🐧' },
+            { id: 'sparrow', name: 'スズメ', group: 'birds', emoji: '🐦' },
+            { id: 'snake', name: 'ヘビ', group: 'reptiles', emoji: '🐍' },
+            { id: 'tuna', name: 'マグロ', group: 'fish', emoji: '🐟' },
+        ];
+
+        const groups = [
+            { id: 'mammals', name: '哺乳類', hint: '体毛があり、母乳で育てる。', color: 'bg-blue-100', buttonColor: 'bg-blue-500 hover:bg-blue-600' },
+            { id: 'birds', name: '鳥類', hint: '羽毛と翼があり、卵を産む。', color: 'bg-yellow-100', buttonColor: 'bg-yellow-500 hover:bg-yellow-600' },
+            { id: 'reptiles', name: '爬虫類', hint: 'うろこがあり、肺で呼吸する。', color: 'bg-green-100', buttonColor: 'bg-green-500 hover:bg-green-600' },
+            { id: 'fish', name: '魚類', hint: 'ひれがあり、えらで呼吸する。', color: 'bg-indigo-100', buttonColor: 'bg-indigo-500 hover:bg-indigo-600' },
+        ];
+        
+        function initializeClassification() {
+            animalSelector.innerHTML = '';
+            classificationGroupsContainer.innerHTML = '';
+            selectedAnimalName.textContent = '-';
+            selectedAnimal = null;
+
+            animals.forEach(animal => {
+                const div = document.createElement('div');
+                div.id = `animal-${animal.id}`;
+                div.className = 'p-3 border rounded-lg cursor-pointer text-center transition-all duration-200';
+                div.innerHTML = `<span class="text-4xl">${animal.emoji}</span><p class="text-xs font-bold mt-1">${animal.name}</p>`;
+                div.addEventListener('click', () => {
+                    selectedAnimal = animal;
+                    selectedAnimalName.textContent = animal.name;
+                    document.querySelectorAll('#animal-selector > div').forEach(el => el.classList.remove('card-selected'));
+                    div.classList.add('card-selected');
+                });
+                animalSelector.appendChild(div);
+            });
+
+            groups.forEach(group => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = `${group.color} p-3 rounded-lg flex items-center justify-between`;
+                groupDiv.innerHTML = `
+                    <div>
+                        <h5 class="font-bold">${group.name}</h5>
+                        <p class="text-xs text-stone-600">${group.hint}</p>
+                        <div id="group-dropzone-${group.id}" class="flex flex-wrap gap-2 mt-2 min-h-[50px]"></div>
+                    </div>
+                    <button data-group-id="${group.id}" class="classify-btn ${group.buttonColor} text-white font-bold py-2 px-3 rounded-lg text-sm transition-colors">分類</button>
+                `;
+                classificationGroupsContainer.appendChild(groupDiv);
+            });
+            
+            document.querySelectorAll('.classify-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const groupId = button.dataset.groupId;
+                    if (selectedAnimal) {
+                        const animalCard = document.getElementById(`animal-${selectedAnimal.id}`);
+                        if (animalCard) {
+                             const dropzone = document.getElementById(`group-dropzone-${groupId}`);
+                             dropzone.appendChild(animalCard);
+                             
+                             animalCard.classList.remove('card-selected', 'cursor-pointer');
+                             animalCard.classList.add('classified');
+
+                             if(selectedAnimal.group === groupId) {
+                                 animalCard.classList.add('border-2', 'border-green-500');
+                             } else {
+                                 animalCard.classList.add('border-2', 'border-red-500');
+                             }
+                             
+                             selectedAnimal = null;
+                             selectedAnimalName.textContent = '-';
+                        }
+                    } else {
+                        alert('先に動物を選んでください。');
+                    }
+                });
+            });
+        }
+        
+        resetButton.addEventListener('click', initializeClassification);
+
+        initializeClassification();
+    });
+    </script>
+</body>
+</html>
+�
